@@ -21,3 +21,27 @@ header { background: #2563eb; color: white; padding: 15px; display: flex; justif
 
 /* 公用控制 */
 .hidden { display: none !important; }
+
+/* 卡片與資料排版 */
+.date-header { font-size: 18px; font-weight: bold; color: #1e3a8a; margin: 20px 0 10px 0; border-left: 4px solid #2563eb; padding-left: 10px; }
+.card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+.card-time { font-size: 14px; color: #4b5563; font-weight: bold; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between; }
+.card-title { font-size: 16px; font-weight: bold; color: #1f2937; margin-bottom: 5px; }
+.card-location { font-size: 13px; color: #2563eb; margin-bottom: 5px; }
+.card-memo { font-size: 13px; color: #6b7280; background: #f9fafb; padding: 8px; border-radius: 5px; margin-top: 5px; border-left: 2px solid #d1d5db; }
+
+/* 標籤 Badge */
+.badge { font-size: 11px; padding: 3px 8px; border-radius: 12px; font-weight: normal; color: white; }
+.badge-all { background: #6b7280; }
+.badge-mountain { background: #10b981; }
+.badge-relax { background: #f59e0b; }
+
+/* 車隊編組樣式 */
+.car-section { background: white; padding: 15px; border-radius: 10px; margin-top: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+.car-section h3 { font-size: 16px; color: #1e3a8a; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 10px; }
+.member-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed #f3f4f6; }
+.member-row:last-child { border-bottom: none; }
+.member-row.leader { background: #eff6ff; border-radius: 5px; padding: 8px; }
+.member-role { font-size: 12px; color: #6b7280; margin-right: 8px; }
+.member-name { font-size: 15px; font-weight: 500; }
+.btn-call { font-size: 13px; color: white; background: #10b981; text-decoration: none; padding: 4px 10px; border-radius: 5px; }
