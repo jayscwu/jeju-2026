@@ -1,5 +1,5 @@
 // ⚠️ 請將下方的字串替換成你剛剛複製的 Google 試算表 ID
-const SPREADSHEET_ID = '你的Google試算表ID_填在這裡'; 
+const SPREADSHEET_ID = '16uPrVxpsC4TAQRvTiT566ekZ4M4BqKv92ztU06_KLGw'; 
 
 document.addEventListener("DOMContentLoaded", () => {
     const syncBtn = document.getElementById("sync-btn");
