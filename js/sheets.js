@@ -1,5 +1,5 @@
-// ⚠️ 請將下方的字串替換成你剛剛複製的 Google 試算表 ID
-const SPREADSHEET_ID = '16uPrVxpsC4TAQRvTiT566ekZ4M4BqKv92ztU06_KLGw'; 
+// ⚠️ 請將下方的字串替換成你從 Google 試算表網址複製的 ID
+const SPREADSHEET_ID = '你的Google試算表ID_填在這裡'; 
 
 document.addEventListener("DOMContentLoaded", () => {
     const syncBtn = document.getElementById("sync-btn");
@@ -8,72 +8,94 @@ document.addEventListener("DOMContentLoaded", () => {
     loadTravelData();
 
     // 點擊手動同步按鈕
-    syncBtn.addEventListener("click", () => {
-        syncBtn.textContent = "🔄 同步中...";
-        loadTravelData(true);
-    });
+    if (syncBtn) {
+        syncBtn.addEventListener("click", () => {
+            syncBtn.textContent = "🔄 同步中...";
+            loadTravelData(true);
+        });
+    }
 });
 
 // 主載入函式 (支援強制更新快取)
 async function loadTravelData(forceRefresh = false) {
     const syncBtn = document.getElementById("sync-btn");
-    
-    // CSV 匯出網址
+    console.log("🚀 [Sheets] 開始載入資料，目前的 SPREADSHEET_ID 爲:", SPREADSHEET_ID);
+
+    // Google CSV 匯出網址
     const itineraryUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=itinerary`;
     const fleetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=fleet`;
 
     try {
         // 1. 抓取並渲染行程
+        console.log("⏳ [Sheets] 正在請求行程資料 (itinerary)...");
         const itineraryData = await fetchCSV(itineraryUrl, 'itinerary_cache', forceRefresh);
+        console.log("✅ [Sheets] 行程資料抓取成功，共", itineraryData.length, "筆:", itineraryData);
         renderItinerary(itineraryData);
 
         // 2. 抓取並渲染車隊
+        console.log("⏳ [Sheets] 正在請求車隊資料 (fleet)...");
         const fleetData = await fetchCSV(fleetUrl, 'fleet_cache', forceRefresh);
+        console.log("✅ [Sheets] 車隊資料抓取成功，共", fleetData.length, "筆:", fleetData);
         renderFleet(fleetData);
 
-        if(syncBtn) syncBtn.textContent = "🔄 同步成功";
-        setTimeout(() => { if(syncBtn) syncBtn.textContent = "🔄 同步資料"; }, 2000);
+        if (syncBtn) syncBtn.textContent = "🔄 同步成功";
+        setTimeout(() => { if (syncBtn) syncBtn.textContent = "🔄 同步資料"; }, 2000);
 
     } catch (error) {
-        console.error("資料載入失敗", error);
-        if(syncBtn) syncBtn.textContent = "❌ 同步失敗";
+        console.error("❌ [Sheets] 資料解析或連線失敗:", error);
+        if (syncBtn) syncBtn.textContent = "❌ 同步失敗";
         
-        // 嘗試從本地 LocalStorage 撈舊資料防崩潰 (離線支援)
+        // 離線防崩潰機制：嘗試從本地 LocalStorage 撈上一次成功的快取資料
+        console.log("⚠️ [Sheets] 嘗試載入本地快取備份...");
         const oldItinerary = localStorage.getItem('itinerary_cache');
         const oldFleet = localStorage.getItem('fleet_cache');
-        if(oldItinerary) renderItinerary(JSON.parse(oldItinerary));
-        if(oldFleet) renderFleet(JSON.parse(oldFleet));
+        if (oldItinerary) renderItinerary(JSON.parse(oldItinerary));
+        if (oldFleet) renderFleet(JSON.parse(oldFleet));
     }
 }
 
-// 通用 Fetch CSV 並轉成 JSON 陣列的函式
+// 通用 Fetch CSV 並轉成 JSON 陣列的函式 (修正跨平台換行相容性)
 async function fetchCSV(url, cacheKey, forceRefresh) {
+    // 如果不強制重新整理，且本地已有快取，就直接回傳快取
     if (!forceRefresh && localStorage.getItem(cacheKey)) {
+        console.log(`📦 [Fetch] 偵測到 ${cacheKey} 的本地快取，直接啟用離線檢視`);
         return JSON.parse(localStorage.getItem(cacheKey));
     }
 
     const response = await fetch(url + `&cache_bust=${Date.now()}`);
+    if (!response.ok) throw new Error(`HTTP 錯誤! 狀態碼: ${response.status}`);
+    
     const text = await response.text();
     
-    // 解析 CSV 文字成 JSON
-    const lines = text.split('\n').map(line => {
-        // 清理 Google CSV 匯出可能帶有的引號
+    // 使用正規表達式 /\r?\n/ 同時切開 Windows (\r\n) 與 Mac/Linux (\n) 的 CSV 換行
+    const lines = text.split(/\r?\n/).map(line => {
+        // 清理 Google CSV 匯出時可能夾帶的頭尾雙引號與空格
         return line.split(',').map(cell => cell.replace(/^"(.*)"$/, '$1').trim());
     });
 
-    const headers = lines[0];
+    // 過濾掉完全空白的無效行
+    const validLines = lines.filter(line => line.length > 0 && line[0] !== "");
+
+    if (validLines.length === 0) {
+        console.warn(`⚠️ [Fetch] 警告: 抓取的 CSV (${cacheKey}) 內容為空行`);
+        return [];
+    }
+
+    // 將第一列欄位名稱全部轉小寫，當作 JSON 的 Key
+    const headers = validLines[0].map(h => h.toLowerCase().trim());
     const result = [];
 
-    for (let i = 1; i < lines.length; i++) {
-        if (!lines[i][0]) continue; // 跳過空行
+    // 從第二列開始解析實際資料
+    for (let i = 1; i < validLines.length; i++) {
         let obj = {};
         headers.forEach((header, index) => {
-            obj[header.toLowerCase()] = lines[i][index] || "";
+            // 房呆機制：若對應欄位沒資料則給予空字串
+            obj[header] = validLines[i][index] !== undefined ? validLines[i][index] : "";
         });
         result.push(obj);
     }
 
-    // 存入 LocalStorage 做本地備份 (離線檢視用)
+    // 寫入本地快取，供下次離線使用
     localStorage.setItem(cacheKey, JSON.stringify(result));
     return result;
 }
@@ -84,79 +106,8 @@ function renderItinerary(data) {
     if (!container) return;
 
     if (data.length === 0) {
-        container.innerHTML = "<h2>📅 行程表目前沒有資料</h2>";
+        container.innerHTML = "<h2>📅 行程表目前沒有資料</h2><p>請檢查 Google Sheet 內 itinerary 分頁是否有確實填寫。</p>";
         return;
     }
 
-    let html = `<h2>📅 每日行程規劃</h2>`;
-    let currentTempDate = "";
-
-    data.forEach(item => {
-        // 如果是新的一天，印出日期大標題
-        if (item.date !== currentTempDate) {
-            currentTempDate = item.date;
-            html += `<div class="date-header">📍 ${item.date}</div>`;
-        }
-
-        // 根據分組給予不同的視覺標籤
-        let groupBadge = `<span class="badge badge-all">${item.group}</span>`;
-        if (item.group.includes("漢拏山")) groupBadge = `<span class="badge badge-mountain">${item.group}</span>`;
-        if (item.group.includes("休閒")) groupBadge = `<span class="badge badge-relax">${item.group}</span>`;
-
-        html += `
-            <div class="card">
-                <div class="card-time">${item.time} ${groupBadge}</div>
-                <div class="card-title">${item.title}</div>
-                <div class="card-location">📍 ${item.location}</div>
-                ${item.memo ? `<div class="card-memo">📝 ${item.memo}</div>` : ''}
-            </div>
-        `;
-    });
-
-    container.innerHTML = html;
-}
-
-// 渲染車隊名單 UI
-function renderFleet(data) {
-    const container = document.getElementById("tab-fleet");
-    if (!container) return;
-
-    if (data.length === 0) {
-        container.innerHTML = "<h2>🚗 車隊名單目前沒有資料</h2>";
-        return;
-    }
-
-    // 依據車號分組
-    const cars = {};
-    data.forEach(item => {
-        if (!cars[item.car_no]) cars[item.car_no] = [];
-        cars[item.car_no].push(item);
-    });
-
-    let html = `<h2>🚗 車隊編組名單</h2>`;
-
-    Object.keys(cars).sort().forEach(carNo => {
-        html += `<div class="car-section"><h3>🚘 第 ${carNo} 號車</h3>`;
-        
-        cars[carNo].forEach(member => {
-            const isLeader = member.role === "車長";
-            const isChild = member.type === "小孩";
-            
-            html += `
-                <div class="member-row ${isLeader ? 'leader' : ''}">
-                    <div class="member-info">
-                        <span class="member-role">${isLeader ? '😎 車長' : '👤 乘客'}</span>
-                        <span class="member-name">${member.name} ${isChild ? '👶' : ''}</span>
-                    </div>
-                    <div class="member-contact">
-                        ${member.phone ? `<a href="tel:${member.phone}" class="btn-call">📞 撥打</a>` : ''}
-                    </div>
-                </div>
-            `;
-        });
-        
-        html += `</div>`;
-    });
-
-    container.innerHTML = html;
-}
+    let html = `<h2>📅
