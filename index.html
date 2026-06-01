@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>濟州島自駕冒險 2026</title>
+    <!-- PWA 核心設定 -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+    <!-- 密碼解鎖畫面 (App Lock) -->
+    <div id="lock-screen" class="full-screen">
+        <div class="lock-box">
+            <h2>🔒 濟州島自駕團專用 Web APP</h2>
+            <p>請輸入出發與回程日期解鎖 (共8碼)</p>
+            <input type="password" id="password-input" placeholder="請輸入密碼" inputmode="numeric">
+            <button id="unlock-btn">解鎖進入</button>
+            <p id="error-msg" class="error"></p>
+        </div>
+    </div>
+
+    <!-- 主應用程式畫面 (預設隱藏，解鎖後顯示) -->
+    <div id="main-app" class="hidden">
+        <header>
+            <h1>Jeju 2026 🌴</h1>
+            <button id="sync-btn">🔄 同步資料</button>
+        </header>
+
+        <!-- 主導覽列 -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-target="tab-itinerary">📅 行程</button>
+            <button class="nav-item" data-target="tab-fleet">🚗 車隊</button>
+            <button class="nav-item" data-target="tab-expense">💰 記帳</button>
+            <button class="nav-item" data-target="tab-maps">🗺️ 地圖</button>
+        </nav>
+
+        <!-- 各分頁內容區 -->
+        <main class="content">
+            <section id="tab-itinerary" class="tab-content"><h2>行程載入中...</h2></section>
+            <section id="tab-fleet" class="tab-content hidden"><h2>車隊名單載入中...</h2></section>
+            <section id="tab-expense" class="tab-content hidden"><h2>記帳系統載入中...</h2></section>
+            <section id="tab-maps" class="tab-content hidden"><h2>地圖讀取中...</h2></section>
+        </main>
+    </div>
+
+    <!-- 引入核心 JS -->
+    <script src="./js/app.js"></script>
+</body>
+</html>
