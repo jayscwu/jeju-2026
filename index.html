@@ -4,14 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>濟州島自駕冒險 2026</title>
-    <!-- PWA 核心設定 -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#2563eb">
     <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
 
-    <!-- 密碼解鎖畫面 (App Lock) -->
     <div id="lock-screen" class="full-screen">
         <div class="lock-box">
             <h2>🔒 濟州島自駕團專用 Web APP</h2>
@@ -22,14 +20,12 @@
         </div>
     </div>
 
-    <!-- 主應用程式畫面 (預設隱藏，解鎖後顯示) -->
     <div id="main-app" class="hidden">
         <header>
             <h1>Jeju 2026 🌴</h1>
             <button id="sync-btn">🔄 同步資料</button>
         </header>
 
-        <!-- 主導覽列 -->
         <nav class="bottom-nav">
             <button class="nav-item active" data-target="tab-itinerary">📅 行程</button>
             <button class="nav-item" data-target="tab-fleet">🚗 車隊</button>
@@ -37,18 +33,82 @@
             <button class="nav-item" data-target="tab-maps">🗺️ 地圖</button>
         </nav>
 
-        <!-- 各分頁內容區 -->
         <main class="content">
-            <section id="tab-itinerary" class="tab-content"><h2>行程載入中...</h2></section>
-            <section id="tab-fleet" class="tab-content hidden"><h2>車隊名單載入中...</h2></section>
-            <section id="tab-expense" class="tab-content hidden"><h2>記帳系統載入中...</h2></section>
-            <section id="tab-maps" class="tab-content hidden"><h2>地圖讀取中...</h2></section>
+            
+            <section id="tab-itinerary" class="tab-content">
+                <p style="font-size:12px; color:#6b7280; text-align:center; margin-bottom:10px;">💡 提示：點擊卡片中的「📍 地點」可直接喚起 Google Maps 導航！</p>
+                <h2>📅 行程載入中...</h2>
+            </section>
+
+            <section id="tab-fleet" class="tab-content hidden">
+                <h2>🚗 車隊名單載入中...</h2>
+            </section>
+
+            <section id="tab-expense" class="tab-content hidden">
+                <h2>💰 團隊旅遊記帳系統</h2>
+                
+                <div class="card">
+                    <h3 style="margin-bottom: 10px; color:#1e3a8a;">➕ 新增消費款項</h3>
+                    <form id="expense-form">
+                        <div class="form-group">
+                            <input type="text" id="exp-title" placeholder="品項名稱 (如：黑豬肉晚餐、3號車加油)" required>
+                        </div>
+                        <div class="form-row">
+                            <input type="number" id="exp-amount" placeholder="金額" required style="flex: 2;">
+                            <select id="exp-currency" style="flex: 1;">
+                                <option value="KRW">韓元 (₩)</option>
+                                <option value="TWD">台幣 ($)</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <select id="exp-payer" required style="flex: 1;">
+                                <option value="">-- 載入付款人中 --</option>
+                            </select>
+                            <select id="exp-split-type" required style="flex: 1;"></select>
+                        </div>
+                        <div class="form-group" style="margin-top:10px;">
+                            <label style="font-size:12px; color:#4b5563; display:block; margin-bottom:4px;">🧾 上傳收據/發票照片 (可直接拍照)：</label>
+                            <input type="file" id="exp-receipt" accept="image/*" capture="environment" style="font-size:13px;">
+                        </div>
+                        <button type="submit" class="btn-submit-expense">儲存記帳</button>
+                    </form>
+                </div>
+
+                <div id="expense-report">
+                    <p style='color:#6b7280;'>等待記帳數據產生結算報告...</p>
+                </div>
+
+                <h3 style="margin: 20px 0 10px 0; color:#1e3a8a;">📜 消費流水帳明細</h3>
+                <div id="expense-list">
+                    <p style='color:#6b7280; text-align:center;'>📊 目前尚無記帳紀錄</p>
+                </div>
+            </section>
+
+            <section id="tab-maps" class="tab-content hidden">
+                <h2>🌦️ 濟州島即時天氣觀測</h2>
+                <div id="jeju-weather">
+                    <p style="color:#6b7280; font-size:13px;">天氣觀測站連線中...</p>
+                </div>
+
+                <h2 style="margin-top: 25px;">🗺️ 團隊地圖與車隊導航</h2>
+                <div class="card" style="text-align: center; padding: 25px 15px;">
+                    <span style="font-size: 40px;">🚗</span>
+                    <h3 style="margin-top:10px; color:#1e3a8a;">Google Maps 車隊共同導航</h3>
+                    <p style="font-size:13px; color:#4b5563; margin-top:5px; line-height:1.5;">
+                        由於 Web PWA 限制，即時車隊 GPS 共享需啟用付費 Google 專屬金鑰。出發前，建議車長們直接點擊下方按鈕，加入我們為本次旅程建立的「Google Maps 共同群組」，即可在地圖上即時看到彼此的車輛位置！
+                    </p>
+                    <a href="https://maps.google.com" target="_blank" class="btn-submit-expense" style="display:inline-block; text-decoration:none; margin-top:15px; width:auto; padding:10px 20px;">
+                        🌐 開啟 Google Maps 團隊地圖
+                    </a>
+                </div>
+            </section>
+
         </main>
     </div>
 
-    <!-- 引入核心 JS -->
     <script src="./js/app.js"></script>
-<script src="./js/app.js"></script>
-<script src="./js/sheets.js"></script>  </body>
+    <script src="./js/sheets.js"></script>
+    <script src="./js/expense.js"></script>
+    <script src="./js/maps.js"></script>
 </body>
 </html>
