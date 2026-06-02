@@ -1,6 +1,6 @@
 // ==========================================
 // 濟州島自駕冒險 2026 - 萬能記帳與分帳系統核心 (expense.js)
-// ⚠️ 已徹底移除重複的 SPREADSHEET_ID 宣告，修正 SyntaxError
+// ⚠️ 已徹底移除重複的 SPREADSHEET_ID 宣告，防止重複聲明衝突
 // ==========================================
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -37,7 +37,7 @@ function initExpenseTab() {
     renderExpenseList();
 }
 
-// 供外部（如 sheets.js）名單更新成功後，跨檔案呼叫的公開介面
+// 💡 修正無窮迴圈：全域公開介面，供 sheets.js 資料同步成功後進行跨文件喚醒
 window.refreshPayerDropdown = function() {
     console.log("🔄 [Expense] 接收到來自 Sheets 的更新通知，執行安全刷新...");
     renderPayerOptions(); 
@@ -181,6 +181,7 @@ function renderExpenseList() {
 
     const TWD_TO_KRW = 42; 
 
+    // 1. 渲染消費流水帳明細 (UI 高級視覺微調版)
     let listHtml = "";
     expenses.forEach(exp => {
         let originalPrice = `${exp.amount.toLocaleString()} ${exp.currency === "KRW" ? "₩" : "$"}`;
@@ -193,10 +194,13 @@ function renderExpenseList() {
         listHtml += `
             <div class="card expense-card">
                 <div class="expense-main">
-                    <div>
-                        <div class="card-title">${exp.title}</div>
-                        <div class="expense-meta">💰 付款人: <b>${exp.payer}</b> | 分攤: <span class="badge badge-all">${splitText}</span></div>
-                        <div style="font-size:12px; color:#9ca3af; margin-top:2px;">⏱️ ${exp.date}</div>
+                    <div class="expense-info-left">
+                        <div class="expense-title-text">📝 ${exp.title}</div>
+                        <div class="expense-meta">
+                            <span>👤 付款人: <b>${exp.payer}</b></span>
+                            <span class="badge-split">🏷️ ${splitText}</span>
+                        </div>
+                        <div style="font-size:11px; color:#9ca3af; margin-top:2px;">⏱️ ${exp.date}</div>
                     </div>
                     <div class="expense-amount-box">
                         <div class="exp-price">${originalPrice}</div>
