@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// 初始化記帳頁面 (安全防呆補償版：防止第一次開啟因沒快取名單而 UI 卡死)
+// 初始化記帳頁面 (安全防呆補償版)
 function initExpenseTab() {
     const fleetData = JSON.parse(localStorage.getItem('fleet_cache')) || [];
     
@@ -26,7 +26,7 @@ function initExpenseTab() {
             payerSelect.innerHTML = `<option value="">-- 請先點擊右上角[同步資料] --</option>`;
         }
         renderSplitOptions();
-        renderExpenseList(); // 即使有名單空缺，依然把記帳表單與歷史列表印出來
+        renderExpenseList(); // 即使名單空缺，依然把記帳表單與歷史列表印出來
         return;
     }
     
@@ -61,7 +61,7 @@ function renderPayerOptions() {
     rebuildPayerList(payerSelect, fleetData);
 }
 
-// 建立名單 HTML 的輔助函式
+// 建立名單 HTML 的輔助函式 (全自動欄位辨識防呆版)
 function rebuildPayerList(selectElement, fleetData) {
     if (fleetData.length === 0) {
         selectElement.innerHTML = `<option value="">-- 請先點擊右上角[同步資料] --</option>`;
@@ -69,11 +69,29 @@ function rebuildPayerList(selectElement, fleetData) {
     }
     
     let html = '<option value="">-- 選擇付款人 --</option>';
+    let memberCount = 0;
+
     fleetData.forEach(m => {
-        if(m.name) {
-            html += `<option value="${m.name}">${m.name} (${m.role || '成員'})</option>`;
+        // 💡 萬能相容支援：自動嘗試抓取各種可能打錯的欄位名稱 (大小寫、空格或中文)
+        let name = m.name || m.Name || m.NAME || m["name "] || m["姓名"] || "";
+        let role = m.role || m.Role || m.ROLE || m["role "] || m["職稱"] || m["職務"] || "成員";
+        
+        // 去除頭尾可能不小心誤打的空白字元
+        name = name.toString().trim();
+        role = role.toString().trim();
+
+        if (name && name !== "undefined" && name !== "") {
+            html += `<option value="${name}">${name} (${role})</option>`;
+            memberCount++;
         }
     });
+    
+    // 如果過濾完發現還是沒有有效名單，顯示欄位錯誤提示
+    if (memberCount === 0) {
+        selectElement.innerHTML = `<option value="">-- 試算表欄位名稱不符，請檢查標題 --</option>`;
+        return;
+    }
+    
     selectElement.innerHTML = html;
 }
 
@@ -239,7 +257,10 @@ function calculateDebts(expenses, fleet, reportContainer) {
     
     // 初始化每個人淨值
     fleet.forEach(m => {
-        if(m.name) balances[m.name] = 0;
+        // 💡 萬能相容：計算時同樣支援大寫、空格與中文欄位提取
+        let name = m.name || m.Name || m.NAME || m["name "] || m["姓名"] || "";
+        name = name.toString().trim();
+        if(name) balances[name] = 0;
     });
 
     // 掃描流水帳進行權重拆分
@@ -256,13 +277,23 @@ function calculateDebts(expenses, fleet, reportContainer) {
         if (exp.splitType === "all") {
             targetMembers = fleet;
         } else if (exp.splitType === "adult") {
-            targetMembers = fleet.filter(m => m.type !== "小孩");
+            targetMembers = fleet.filter(m => {
+                let type = m.type || m.Type || m["身分"] || m["類型"] || "";
+                return type.toString().trim() !== "小孩";
+            });
         } else if (exp.splitType.startsWith("car_")) {
             const carNo = exp.splitType.split("_")[1];
-            targetMembers = fleet.filter(m => m.car_no === carNo);
+            targetMembers = fleet.filter(m => {
+                let cNo = m.car_no || m.Car_no || m["car_no "] || m["車號"] || "";
+                return cNo.toString().trim() === carNo;
+            });
         } else if (exp.splitType === "mountain") {
             // 漢拏山組：預設由 1 號車和 2 號車共同承擔
-            targetMembers = fleet.filter(m => m.car_no === "1" || m.car_no === "2");
+            targetMembers = fleet.filter(m => {
+                let cNo = m.car_no || m.Car_no || m["car_no "] || m["車號"] || "";
+                cNo = cNo.toString().trim();
+                return cNo === "1" || cNo === "2";
+            });
         }
 
         if (targetMembers.length === 0) targetMembers = fleet;
@@ -270,8 +301,10 @@ function calculateDebts(expenses, fleet, reportContainer) {
         // 每人扣除應分攤份額
         let perShare = amountInKRW / targetMembers.length;
         targetMembers.forEach(m => {
-            if (m.name && balances[m.name] !== undefined) {
-                balances[m.name] -= perShare; 
+            let name = m.name || m.Name || m.NAME || m["name "] || m["姓名"] || "";
+            name = name.toString().trim();
+            if (name && balances[name] !== undefined) {
+                balances[name] -= perShare; 
             }
         });
     });
