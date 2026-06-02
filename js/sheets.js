@@ -1,5 +1,5 @@
-// ⚠️ 請確保這串 ID 100% 正確
-const SPREADSHEET_ID = '16uPrVxpsC4TAQRvTiT566ekZ4M4BqKv92ztU06_KLGw'; // 👈 這裡我先用示意，請換成你原本的那串 ID
+// ⚠️ 請確保此處為您正確的 Google 試算表 ID
+const SPREADSHEET_ID = '16uPrVxpsC4TAQRvTiT566ekZ4M4BqKv92ztU06_KLGw'; // 👈 請換成您實際的 ID
 
 document.addEventListener("DOMContentLoaded", () => {
     const syncBtn = document.getElementById("sync-btn");
@@ -21,7 +21,6 @@ async function loadTravelData(forceRefresh = false) {
     const syncBtn = document.getElementById("sync-btn");
     const itineraryContainer = document.getElementById("tab-itinerary");
 
-    // 💡 改用 Google Visualization API 較穩定的 JSONP/JSON 格式，避開手機瀏覽器的 CSV 換行切分問題
     const itineraryUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=itinerary`;
     const fleetUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=fleet`;
 
@@ -41,13 +40,11 @@ async function loadTravelData(forceRefresh = false) {
         console.error("❌ 載入失敗:", error);
         if (syncBtn) syncBtn.textContent = "❌ 同步失敗";
         
-        // 畫面上直接印出錯誤訊息，方便在手機上直接抓 Bug！
         if (itineraryContainer) {
             itineraryContainer.innerHTML = `
                 <div class="card" style="border-left: 5px solid #ef4444; background: #fee2e2;">
                     <h3 style="color:#b91c1c;">❌ 資料載入發生錯誤</h3>
                     <p style="font-size:13px; color:#7f1d1d; margin-top:5px;">錯誤原因: ${error.message}</p>
-                    <p style="font-size:12px; color:#4b5563; margin-top:5px;">請確認：1. 試算表 ID 是否正確。2. 試算表是否有開啟「知道連結的任何人都可以檢視」。</p>
                 </div>
             `;
         }
@@ -60,7 +57,7 @@ async function loadTravelData(forceRefresh = false) {
     }
 }
 
-// 全新解析 Google Sheet JSON 格式的函式 (極高穩定度)
+// 解析 Google Sheet JSON 格式的函式
 async function fetchGoogleSheet(url, cacheKey, forceRefresh) {
     if (!forceRefresh && localStorage.getItem(cacheKey)) {
         return JSON.parse(localStorage.getItem(cacheKey));
@@ -71,27 +68,22 @@ async function fetchGoogleSheet(url, cacheKey, forceRefresh) {
     
     const responseText = await response.text();
     
-    // Google API 回傳的 JSON 會包裹在 google.visualization.Query.setResponse() 中，需用正規表達式切出純 JSON
     const jsonMatch = responseText.match(/google\.visualization\.Query\.setResponse\(([\s\S]*?)\);/);
     if (!jsonMatch) throw new Error("無法解析 Google Sheet 回傳的資料結構");
     
     const jsonObj = JSON.parse(jsonMatch[1]);
     const table = jsonObj.table;
     
-    // 抓取欄位名稱 (Header)
     const headers = table.cols.map(col => (col.label ? col.label.toLowerCase().trim() : ''));
-    
-    // 抓取列資料 (Rows)
     const result = [];
+    
     table.rows.forEach(row => {
         let obj = {};
         headers.forEach((header, index) => {
             if (!header) return;
-            // Google Sheet 的儲存格數值或文字儲存在 c[index].v 或 c[index].f
             const cell = row.c[index];
             obj[header] = cell ? (cell.f || cell.v || "") : "";
         });
-        // 只要這列的第一個欄位有值，就視為有效資料
         if (obj[headers[0]]) {
             result.push(obj);
         }
@@ -107,7 +99,7 @@ function renderItinerary(data) {
     if (!container) return;
 
     if (data.length === 0) {
-        container.innerHTML = "<h2>📅 行程表目前沒有資料</h2><p>請檢查工作表標籤名稱是否確實為小寫 itinerary</p>";
+        container.innerHTML = "<h2>📅 行程表目前沒有資料</h2>";
         return;
     }
 
@@ -144,7 +136,7 @@ function renderFleet(data) {
     if (!container) return;
 
     if (data.length === 0) {
-        container.innerHTML = "<h2>🚗 車隊名單目前沒有資料</h2><p>請檢查工作表標籤名稱是否確實為小寫 fleet</p>";
+        container.innerHTML = "<h2>🚗 車隊名單目前沒有資料</h2>";
         return;
     }
 
