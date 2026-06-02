@@ -2,9 +2,6 @@
 // 濟州島自駕冒險 2026 - Google Sheet 資料同步核心 (sheets.js)
 // ==========================================
 
-// ⚠️ 請確保此處為您正確的 Google 試算表 ID
-const SPREADSHEET_ID = '1ZpW8FAnv9G8xXQ_Ld_e7e6u3gB_Vd6fDOnfMstL4dG8'; // 👈 請換成您實際的 ID
-
 document.addEventListener("DOMContentLoaded", () => {
     const syncBtn = document.getElementById("sync-btn");
     
