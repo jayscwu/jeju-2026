@@ -3,10 +3,10 @@
 // ==========================================
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 延遲 500ms 初始化，確保從 Google Sheet 抓過來的車隊名單快取已經穩定
+    // 延遲 600ms 初始化，給 sheets.js 留出從網路抓取或讀取快取的緩衝時間
     setTimeout(() => {
         initExpenseTab();
-    }, 500);
+    }, 600);
     
     // 綁定記帳表單提交事件
     const form = document.getElementById("expense-form");
@@ -15,26 +15,41 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// 初始化記帳頁面
+// 初始化記帳頁面 (安全防呆補償版：防止第一次開啟因沒快取名單而 UI 卡死)
 function initExpenseTab() {
+    const fleetData = JSON.parse(localStorage.getItem('fleet_cache')) || [];
+    
+    if (fleetData.length === 0) {
+        console.log("⚠️ [Expense] 偵測到手機尚未建立車隊名單快取，啟用防呆空架構");
+        const payerSelect = document.getElementById("exp-payer");
+        if (payerSelect) {
+            payerSelect.innerHTML = `<option value="">-- 請先點擊右上角[同步資料] --</option>`;
+        }
+        renderSplitOptions();
+        renderExpenseList(); // 即使有名單空缺，依然把記帳表單與歷史列表印出來
+        return;
+    }
+    
+    // 若已有快取名單，則執行標準初始化
     renderPayerOptions();
     renderSplitOptions();
     renderExpenseList();
 }
 
-// 供外部（如 sheets.js）名單同步成功後，公開呼叫更新付款人選單的防呆機制
+// 供外部（如 sheets.js）名單更新成功後，跨檔案呼叫的公開介面
 window.renderPayerOptions = function() {
+    console.log("🔄 [Expense] 接收到來自 Sheets 的更新通知，重新渲染付款人選單...");
     renderPayerOptions();
 };
 
-// 【步驟一延伸】從手機快取名單撈出「付款人」下拉選單選項
+// 【步驟一延伸】動態渲染「付款人」下拉選單
 function renderPayerOptions() {
     const payerSelect = document.getElementById("exp-payer");
     if (!payerSelect) return;
     
     const fleetData = JSON.parse(localStorage.getItem('fleet_cache')) || [];
     if (fleetData.length === 0) {
-        payerSelect.innerHTML = `<option value="">--請先至車隊頁面同步名單--</option>`;
+        payerSelect.innerHTML = `<option value="">-- 請先點擊右上角[同步資料] --</option>`;
         return;
     }
     
@@ -47,7 +62,7 @@ function renderPayerOptions() {
     payerSelect.innerHTML = html;
 }
 
-// 動態渲染分攤對象選項
+// 動態渲染「分攤對象」下拉選單
 function renderSplitOptions() {
     const splitSelect = document.getElementById("exp-split-type");
     if (!splitSelect) return;
@@ -64,9 +79,9 @@ function renderSplitOptions() {
     `;
 }
 
-// 【步驟三】處理新增記帳（包含手機相機拍照與 Base64 轉換）
+// 【步驟三】處理表單提交（含手機相機拍照與 Base64 轉換）
 function handleAddExpense(e) {
-    e.preventDefault(); // 阻止網頁重整
+    e.preventDefault(); // 阻止網頁刷新
     
     const title = document.getElementById("exp-title").value.trim();
     const amount = parseFloat(document.getElementById("exp-amount").value);
@@ -80,9 +95,9 @@ function handleAddExpense(e) {
         return;
     }
 
-    // 【步驟一】建立標準資料結構物件
+    // 【步驟一】建立標準記帳資料結構
     const newExpense = {
-        id: Date.now(), // 唯一識別碼
+        id: Date.now(), // 唯一識別碼（時間戳記）
         title: title,
         amount: amount,
         currency: currency,
@@ -92,36 +107,36 @@ function handleAddExpense(e) {
         receipt: "" // 預設無照片
     };
 
-    // 處理收據相片讀取
+    // 處理收據相片讀取與前端壓縮
     if (receiptInput.files && receiptInput.files[0]) {
         const file = receiptInput.files[0];
         const reader = new FileReader();
         
-        // 圖片讀取完成後，注入 Base64 字串並儲存
+        // 圖片轉換 Base64 字串完成後觸發儲存
         reader.onloadend = function() {
             newExpense.receipt = reader.result; 
             saveAndRefresh(newExpense);
         };
-        reader.readAsDataURL(file); // 執行讀取
+        reader.readAsDataURL(file); 
     } else {
         saveAndRefresh(newExpense); // 無相片直接儲存
     }
 }
 
-// 核心儲存與畫面重整控制
+// 儲存資料並刷新介面
 function saveAndRefresh(newExpense) {
     const expenses = JSON.parse(localStorage.getItem("jeju_expenses")) || [];
-    expenses.unshift(newExpense); // 讓新項目顯示在流水帳最上方
+    expenses.unshift(newExpense); // 新項目置頂
     localStorage.setItem("jeju_expenses", JSON.stringify(expenses));
     
-    // 重設 HTML 表單欄位
+    // 清空 HTML 表單輸入欄位
     document.getElementById("expense-form").reset();
     
-    // 重新渲染列表與計算結算
+    // 重新渲染流水帳與結算報告
     renderExpenseList();
 }
 
-// 渲染流水帳列表與呼叫分帳引擎
+// 渲染流水帳列表與驅動算帳引擎
 function renderExpenseList() {
     const listContainer = document.getElementById("expense-list");
     const reportContainer = document.getElementById("expense-report");
@@ -131,12 +146,12 @@ function renderExpenseList() {
     const fleetData = JSON.parse(localStorage.getItem('fleet_cache')) || [];
 
     if (expenses.length === 0) {
-        listContainer.innerHTML = "<p style='color:#6b7280; text-align:center;'>📊 目前尚無記帳紀錄，快去輸入第一筆吧！</p>";
-        reportContainer.innerHTML = "<p style='color:#6b7280;'>等待記帳數據產生結算報告...</p>";
+        listContainer.innerHTML = "<p style='color:#6b7280; text-align:center; padding: 20px 0;'>📊 目前尚無記帳紀錄，快去輸入第一筆吧！</p>";
+        reportContainer.innerHTML = "<div class='report-box'><p style='color:#6b7280;'>等待記帳數據產生結算報告...</p></div>";
         return;
     }
 
-    // 2026年 旅遊即時雙幣別匯率基準 (1 台幣 ≒ 42 韓元)
+    // 2026年 匯率基準 (1 台幣 ≒ 42 韓元)
     const TWD_TO_KRW = 42; 
 
     // 1. 渲染消費流水帳明細
@@ -177,7 +192,7 @@ function renderExpenseList() {
     calculateDebts(expenses, fleetData, reportContainer);
 }
 
-// 輔助翻譯中文標籤
+// 輔助轉換分攤標籤文字
 function getSplitTypeText(type) {
     const map = {
         all: "全員平分", adult: "僅限大人",
@@ -187,7 +202,7 @@ function getSplitTypeText(type) {
     return map[type] || "自訂分攤";
 }
 
-// 點擊看照片隱藏切換
+// 切換照片顯示狀態
 window.toggleReceipt = function(id) {
     const img = document.getElementById(`img-${id}`);
     if (img) img.classList.toggle("hidden");
@@ -196,28 +211,32 @@ window.toggleReceipt = function(id) {
 // 【步驟二】核心分帳最佳化清償路徑演算法 (雙指針貪婪對沖)
 function calculateDebts(expenses, fleet, reportContainer) {
     if (fleet.length === 0) {
-        reportContainer.innerHTML = "<p style='color:#ef4444;'>⚠️ 請先至車隊頁面同步成員名單，才能計算結算報告。</p>";
+        reportContainer.innerHTML = `
+            <div class='report-box'>
+                <p style='color:#ef4444;'>⚠️ 偵測到手機尚未同步成員名單。</p>
+                <p style='color:#4b5563; font-size:13px; margin-top:5px;'>請先至「行程」或「車隊」分頁，並點擊右上角[同步資料]按鈕，即可開啟自動結算報告！</p>
+            </div>`;
         return;
     }
 
     const TWD_TO_KRW = 42;
-    
-    // 初始化每個人在記帳模組中的收支平衡淨值 (Balance)
     const balances = {};
+    
+    // 初始化每個人淨值
     fleet.forEach(m => {
         if(m.name) balances[m.name] = 0;
     });
 
-    // 掃描流水帳，權重分拆
+    // 掃描流水帳進行權重拆分
     expenses.forEach(exp => {
         let amountInKRW = exp.currency === "TWD" ? exp.amount * TWD_TO_KRW : exp.amount;
         
-        // 代墊人賺回此金額 (資產淨值增加)
+        // 代墊人資產增加
         if (balances[exp.payer] !== undefined) {
             balances[exp.payer] += amountInKRW;
         }
 
-        // 過濾找出需要平攤此消費的目標人員
+        // 過濾篩選分攤目標群組
         let targetMembers = [];
         if (exp.splitType === "all") {
             targetMembers = fleet;
@@ -227,13 +246,13 @@ function calculateDebts(expenses, fleet, reportContainer) {
             const carNo = exp.splitType.split("_")[1];
             targetMembers = fleet.filter(m => m.car_no === carNo);
         } else if (exp.splitType === "mountain") {
-            // 漢拏山組：默認由 1 號車和 2 號車（包含登山人員與支援車隊）共同承擔
+            // 漢拏山組：預設由 1 號車和 2 號車共同承擔
             targetMembers = fleet.filter(m => m.car_no === "1" || m.car_no === "2");
         }
 
-        if (targetMembers.length === 0) targetMembers = fleet; // 房防呆
+        if (targetMembers.length === 0) targetMembers = fleet;
 
-        // 扣除每個人自己應承擔的份額
+        // 每人扣除應分攤份額
         let perShare = amountInKRW / targetMembers.length;
         targetMembers.forEach(m => {
             if (m.name && balances[m.name] !== undefined) {
@@ -242,7 +261,7 @@ function calculateDebts(expenses, fleet, reportContainer) {
         });
     });
 
-    // 將所有人拆入「正值(債權)陣營」與「負值(債務)陣營」
+    // 拆分債權人與債務人陣營
     let creditors = [];
     let debtors = [];
 
@@ -255,7 +274,7 @@ function calculateDebts(expenses, fleet, reportContainer) {
         }
     });
 
-    // 進行雙陣營對沖
+    // 矩陣交叉對沖
     let reportHtml = `<h3>📊 最佳化結算方案 (統一以韓元結算)</h3><div class="report-box">`;
     let c = 0, d = 0;
     let hasTransactions = false;
@@ -291,7 +310,7 @@ function calculateDebts(expenses, fleet, reportContainer) {
     reportContainer.innerHTML = reportHtml;
 }
 
-// 全域清空紀錄
+// 全域清空記帳紀錄
 window.clearAllExpenses = function() {
     if (confirm("確定要清空這趟旅程的所有記帳紀錄嗎？此動作無法復原！")) {
         localStorage.removeItem("jeju_expenses");
