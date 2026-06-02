@@ -42,14 +42,29 @@ window.renderPayerOptions = function() {
     renderPayerOptions();
 };
 
-// 【步驟一延伸】動態渲染「付款人」下拉選單
+// 【步驟一延伸】動態渲染「付款人」下拉選單 (點擊自主刷新防呆版)
 function renderPayerOptions() {
     const payerSelect = document.getElementById("exp-payer");
     if (!payerSelect) return;
     
+    // 💡 核心優化：當使用者「點擊/聚焦」這個下拉選單時，立刻強行再去讀取一次最新快取，解決非同步時間差
+    payerSelect.addEventListener("focus", () => {
+        const currentFleet = JSON.parse(localStorage.getItem('fleet_cache')) || [];
+        if (currentFleet.length > 0) {
+            console.log("⚡ [Expense] 偵測到使用者點擊選單，自主即時刷新人員名單！");
+            rebuildPayerList(payerSelect, currentFleet);
+        }
+    });
+    
+    // 初始載入時的渲染
     const fleetData = JSON.parse(localStorage.getItem('fleet_cache')) || [];
+    rebuildPayerList(payerSelect, fleetData);
+}
+
+// 建立名單 HTML 的輔助函式
+function rebuildPayerList(selectElement, fleetData) {
     if (fleetData.length === 0) {
-        payerSelect.innerHTML = `<option value="">-- 請先點擊右上角[同步資料] --</option>`;
+        selectElement.innerHTML = `<option value="">-- 請先點擊右上角[同步資料] --</option>`;
         return;
     }
     
@@ -59,7 +74,7 @@ function renderPayerOptions() {
             html += `<option value="${m.name}">${m.name} (${m.role || '成員'})</option>`;
         }
     });
-    payerSelect.innerHTML = html;
+    selectElement.innerHTML = html;
 }
 
 // 動態渲染「分攤對象」下拉選單
