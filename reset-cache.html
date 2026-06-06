@@ -3,6 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>重置快取</title>
     <style>
       body {
@@ -14,6 +17,7 @@
         color: #16211d;
         background: #f7f8f4;
       }
+
       main {
         width: min(92vw, 420px);
         padding: 24px;
@@ -22,23 +26,42 @@
         background: #fff;
         box-shadow: 0 10px 26px rgba(26, 40, 35, 0.08);
       }
+
       h1 {
         margin: 0 0 10px;
+        font-size: 1.35rem;
       }
+
       p {
-        margin: 0;
+        margin: 0 0 14px;
         color: #68756f;
         line-height: 1.6;
+      }
+
+      a {
+        display: inline-flex;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        padding: 0 14px;
+        color: #fff;
+        font-weight: 900;
+        text-decoration: none;
+        background: #0f766e;
       }
     </style>
   </head>
   <body>
     <main>
       <h1>正在重置快取</h1>
-      <p id="message">請稍候，完成後會自動回到新版 Web App。</p>
+      <p id="message">請稍候，完成後會自動載入新版 Web App。</p>
+      <a id="manualLink" href="./index.html">手動回首頁</a>
     </main>
     <script>
       async function resetCache() {
+        document.querySelector("#manualLink").href = "./index.html?v=" + Date.now();
+
         if ("serviceWorker" in navigator) {
           const registrations = await navigator.serviceWorker.getRegistrations();
           await Promise.all(registrations.map((registration) => registration.unregister()));
@@ -49,14 +72,21 @@
           await Promise.all(keys.map((key) => caches.delete(key)));
         }
 
+        try {
+          sessionStorage.clear();
+        } catch (error) {
+          console.warn(error);
+        }
+
         document.querySelector("#message").textContent = "重置完成，正在載入新版。";
         window.setTimeout(() => {
           window.location.replace("./index.html?v=" + Date.now());
-        }, 600);
+        }, 800);
       }
 
       resetCache().catch((error) => {
-        document.querySelector("#message").textContent = "重置時發生錯誤，請按 Ctrl + F5 後再試一次。";
+        document.querySelector("#message").textContent =
+          "重置時發生錯誤。請使用 Chrome 的網站設定清除 jayscwu.github.io 的網站資料後再開啟首頁。";
         console.error(error);
       });
     </script>
